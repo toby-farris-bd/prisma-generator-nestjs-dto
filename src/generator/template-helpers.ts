@@ -1,3 +1,4 @@
+import { camel } from 'case';
 import { ImportStatementParams, ParsedField } from './types';
 
 const PrismaScalarToTypeScript: Record<string, string> = {
@@ -16,6 +17,22 @@ const PrismaScalarToTypeScript: Record<string, string> = {
   Bytes: 'Buffer',
 };
 
+const PrismaScalarToGql: Record<string, string> = {
+  String: 'String',
+  Boolean: 'Boolean',
+  Int: 'Number',
+  // [Working with BigInt](https://www.prisma.io/docs/concepts/components/prisma-client/working-with-fields#working-with-bigint)
+  BigInt: 'Number',
+  Float: 'Number',
+  // [Working with Decimal](https://www.prisma.io/docs/concepts/components/prisma-client/working-with-fields#working-with-decimal)
+  Decimal: 'Number',
+  DateTime: 'Date',
+  // [working with JSON fields](https://www.prisma.io/docs/concepts/components/prisma-client/working-with-fields/working-with-json-fields)
+  Json: 'String',
+  // [Working with Bytes](https://www.prisma.io/docs/concepts/components/prisma-client/working-with-fields#working-with-bytes)
+  Bytes: 'Buffer',
+};
+
 const knownPrismaScalarTypes = Object.keys(PrismaScalarToTypeScript);
 
 export const scalarToTS = (scalar: string, useInputTypes = false): string => {
@@ -30,6 +47,20 @@ export const scalarToTS = (scalar: string, useInputTypes = false): string => {
   }
 
   return PrismaScalarToTypeScript[scalar];
+};
+
+export const scalarToGql = (scalar: string, useInputTypes = false): string => {
+  if (!knownPrismaScalarTypes.includes(scalar)) {
+    throw new Error(`Unrecognized scalar type: ${scalar}`);
+  }
+
+  // [Working with JSON fields](https://www.prisma.io/docs/concepts/components/prisma-client/working-with-fields/working-with-json-fields)
+  // supports different types for input / output. `Prisma.InputJsonValue` extends `Prisma.JsonValue` with `undefined`
+  if (useInputTypes && scalar === 'Json') {
+    return 'Prisma.InputJsonValue';
+  }
+
+  return PrismaScalarToGql[scalar];
 };
 
 export const echo = (input: string) => input;
@@ -142,6 +173,15 @@ export const makeHelpers = ({
         : entityName(field.type)
     }${when(field.isList, '[]')}`;
 
+  const fieldGqlType = (field: ParsedField, toInputType = false) =>
+    `${when(field.isList, '[')}${
+      field.kind === 'scalar'
+        ? scalarToGql(field.type, toInputType)
+        : field.kind === 'enum' || field.kind === 'relation-input'
+        ? field.type
+        : entityName(field.type)
+    }${when(field.isList, ']')}`;
+
   const fieldToDtoProp = (
     field: ParsedField,
     useInputTypes = false,
@@ -166,11 +206,38 @@ export const makeHelpers = ({
       '\n',
     )}`;
 
-  const fieldToEntityProp = (field: ParsedField) =>
-    `${field.name}${unless(field.isRequired, '?')}: ${fieldType(field)} ${when(
-      field.isNullable,
-      ' | null',
-    )};`;
+  // const fieldToEntityProp = (field: ParsedField) =>
+  //   `${field.name}${unless(field.isRequired, '?')}: ${fieldType(field)} ${when(
+  //     field.isNullable,
+  //     ' | null',
+  //   )};`;
+
+  const fieldToEntityProp = (field: ParsedField) => {
+    const expose = (() => {
+      switch (field.type) {
+        case 'DateTime':
+          return `@EntityDate('${camel(field.name)}'${when(
+            field.isNullable || !field.isRequired,
+            ', true',
+          )})`;
+        case 'Json':
+          return `@EntityJson('${camel(field.name)}'${when(
+            field.isNullable || !field.isRequired,
+            ', true',
+          )})`;
+        default:
+          return `@EntityExpose(${fieldGqlType(field)}, '${camel(
+            field.name,
+          )}'${when(field.isNullable || !field.isRequired, ', true')})`;
+      }
+    })();
+
+    return `${expose}
+      ${field.name}${when(
+      field.isNullable || !field.isRequired,
+      '?',
+    )}: ${fieldType(field)};`;
+  };
 
   const fieldsToEntityProps = (fields: ParsedField[]) =>
     `${each(fields, (field) => fieldToEntityProp(field), '\n')}`;

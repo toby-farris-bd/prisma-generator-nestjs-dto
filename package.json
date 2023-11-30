@@ -1,7 +1,7 @@
 {
   "name": "@vegardit/prisma-generator-nestjs-dto",
   "description": "Generates DTO and Entity classes from Prisma Schema for NestJS",
-  "version": "1.5.1",
+  "version": "1.6.0",
   "license": "Apache-2.0",
   "author": {
     "name": "Benjamin Kroeger",
@@ -27,7 +27,8 @@
     "test:watch": "jest --watch",
     "cleanup:generated": "rimraf src/@generated",
     "pregenerate": "npm run cleanup:generated",
-    "generate": "npx prisma generate && npm run format -- --loglevel error"
+    "generate": "npx prisma generate && npm run format -- --loglevel error",
+    "bump:minor": "npm version minor"
   },
   "repository": {
     "type": "git",
@@ -51,7 +52,8 @@
     "case": "^1.6.3",
     "make-dir": "^3.1.0",
     "slash": "^3.0.0",
-    "tar": "^6.1.11"
+    "tar": "^6.1.11",
+    "ts-toolbelt": "^9.6.0"
   },
   "devDependencies": {
     "@types/jest": "^27.0.2",
