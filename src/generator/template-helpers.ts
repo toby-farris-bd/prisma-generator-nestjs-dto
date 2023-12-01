@@ -213,26 +213,38 @@ export const makeHelpers = ({
   //   )};`;
 
   const fieldToEntityProp = (field: ParsedField) => {
-    const expose = (() => {
+    const annotations = (() => {
       switch (field.type) {
         case 'DateTime':
-          return `@EntityDate('${camel(field.name)}'${when(
-            field.isNullable || !field.isRequired,
-            ', true',
-          )})`;
-        case 'Json':
-          return `@EntityJson('${camel(field.name)}'${when(
-            field.isNullable || !field.isRequired,
-            ', true',
-          )})`;
-        default:
-          return `@EntityExpose(${fieldGqlType(field)}, '${camel(
+          return `@Field(() => GraphQLISODateTime, { name: '${camel(
             field.name,
-          )}'${when(field.isNullable || !field.isRequired, ', true')})`;
+          )}'${when(
+            field.isNullable || !field.isRequired,
+            ', nullable: true',
+          )} })`;
+        case 'Json':
+          return `@Field(() => GraphQLJSON, { name: '${camel(
+            field.name,
+          )}'${when(
+            field.isNullable || !field.isRequired,
+            ', nullable: true',
+          )} })`;
+        case 'ID':
+          return `@Field(() => ID, { name: '${camel(field.name)}'${when(
+            field.isNullable || !field.isRequired,
+            ', nullable: true',
+          )} })`;
+        default:
+          return `@Field(() => ${fieldGqlType(field)}, { name: '${camel(
+            field.name,
+          )}'${when(
+            field.isNullable || !field.isRequired,
+            ', nullable: true',
+          )} })`;
       }
     })();
 
-    return `${expose}
+    return `${annotations}
       ${field.name}${when(
       field.isNullable || !field.isRequired,
       '?',
