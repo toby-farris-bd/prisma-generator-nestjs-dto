@@ -18,7 +18,7 @@
   ],
   "scripts": {
     "prebuild": "npm run cleanup:generated",
-    "prepare": "build",
+    "prepare": "npm run build",
     "build": "tsc --project tsconfig.build.json",
     "format": "prettier --write \"{src,test}/**/*.{js,ts}\"",
     "prelint": "npm run format -- --loglevel error",
